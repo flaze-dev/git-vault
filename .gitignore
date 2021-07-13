@@ -1,0 +1,10 @@
+# development
+.idea
+
+# dependencies
+node_modules
+
+# builds
+lib
+dist
+build
