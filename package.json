@@ -14,7 +14,7 @@
     "fix-permissions": "sudo chmod +rx /usr/local/bin/git-encrypt",
     "install": "yarn i",
     "uninstall": "yarn u",
-    "i": "yarn build && sudo npm i -g",
+    "i": "yarn build && sudo npm i -g && yarn fix-permissions",
     "u": "sudo npm uninstall -g"
   },
   "devDependencies": {

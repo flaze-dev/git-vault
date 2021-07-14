@@ -1,3 +1,7 @@
+#start:encrypted
+./env/dev.env
+#end:encrypted
+
 # development
 .idea
 
