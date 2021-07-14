@@ -26,6 +26,17 @@ class FileManager {
     return fileData.toString().split(/\r?\n/);
   }
 
+  public static read(path: string): string {
+    return fs.readFileSync(path).toString();
+  }
+
+  public static createDirectory(directoryPath: string): void {
+    if (FileManager.fileExists(directoryPath))
+      return;
+
+    fs.mkdirSync(directoryPath, {recursive: true});
+  }
+
   public static createFile(path: string, data: string): void {
     fs.writeFileSync(path, data, FileManager.encoding);
   }
@@ -80,6 +91,10 @@ class FileManager {
     });
 
     return results;
+  }
+
+  public static fileExists(path: string): boolean {
+    return fs.existsSync(path);
   }
 
 }

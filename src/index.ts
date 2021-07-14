@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {Command} from "commander";
-import GitEncrypted from "./commands";
+import GitEncrypt from "./commands";
 import process from "process";
 
 const args = process.argv;
@@ -15,28 +15,45 @@ program
 program
   .command('install')
   .description('install git hooks')
-  .action(GitEncrypted.cmdInstall);
+  .action(GitEncrypt.cmdInstall);
+
+program
+  .command('init')
+  .description('calls install and allows you to setup your key')
+  .option("-g, --generate", 'the encryption iv')
+  .option("-k, --key <value>", 'the encryption key')
+  .option("-i, --iv <value>", 'the encryption iv')
+  .action(GitEncrypt.cmdInit);
+
+program
+  .command('keys')
+  .description('get the keys if they are generated')
+  .option("-k, --key <value>", 'the encryption key')
+  .option("-i, --iv <value>", 'the encryption iv')
+  .action(GitEncrypt.cmdKeys);
+
+program
+  .command('generate')
+  .description('generate keys')
+  .option("-s, --store", 'store the keys in the current project')
+  .action(async (args: any) => {await GitEncrypt.cmdGenerate(args)});
 
 program
   .command('encrypt')
-  .description('encrypt all the files listed in .git-secrets')
+  .description('encrypt all the files listed between .gitignore #start:encrypt and #end:encrypt')
   .option("-g, --git", 'adds all encrypted files to git before commit')
-  .action((args) => {
-    args['git'] ? GitEncrypted.cmdEncryptGit() : GitEncrypted.cmdEncrypt();
-  });
+  .option("-d, --default", 'use default authentication')
+  .option("-k, --key <value>", 'the encryption key')
+  .option("-i, --iv <value>", 'the encryption iv')
+  .action(GitEncrypt.cmdEncrypt);
 
 program
   .command('decrypt')
-  .description('decrypt all the files listed in .git-secrets')
+  .description('decrypt all the files listed between .gitignore #start:encrypt and #end:encrypt')
   .option("-g, --git", 'decrypts all files and handles git events')
-  .action(GitEncrypted.cmdDecrypt);
-
-// program
-//   .command('dev')
-//   .description('run development script')
-//   .action(() => {
-//     const lines = GitEncrypted.getPathsToEncrypt(".gitignore");
-//     console.log(lines);
-//   });
+  .option("-d, --default", 'use default authentication')
+  .option("-k, --key <value>", 'the encryption key')
+  .option("-i, --iv <value>", 'the encryption iv')
+  .action(GitEncrypt.cmdDecrypt);
 
 program.parse(args);
