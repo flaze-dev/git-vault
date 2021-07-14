@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {Command} from "commander";
-import * as process from "process";
-import {install} from "./actions/install";
+import {decrypt, encrypt, gitEncrypt, install} from "./actions";
+import process from "process";
 
 const args = process.argv;
 const program = new Command();
@@ -16,5 +16,18 @@ program
   .command('install')
   .description('install git hooks')
   .action(install);
+
+program
+  .command('encrypt')
+  .option("-g, --git", 'adds all encrypted files to git before commit')
+  .description('encrypt all the files listed in .git-secrets')
+  .action((args) => {
+    args['git'] ? gitEncrypt() : encrypt();
+  });
+
+program
+  .command('decrypt')
+  .description('decrypt all the files listed in .git-secrets')
+  .action(decrypt);
 
 program.parse(args);
