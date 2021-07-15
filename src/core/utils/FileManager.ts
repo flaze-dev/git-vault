@@ -9,25 +9,25 @@ export type File = {
 };
 
 
-
 /**
  * FileManager Util
  * @author Ingo Andelhofs
  */
 class FileManager {
 
-  private static readonly encoding: string = "utf-8";
+  private static readonly ENCODING: BufferEncoding = "utf-8";
 
-  public static readLines(path: string): string[] {
-    if (!fs.existsSync(path))
-      return [];
-
-    const fileData = fs.readFileSync(path);
-    return fileData.toString().split(/\r?\n/);
+  // Primitive
+  public static read(path: string): string {
+    return fs.readFileSync(path).toString(FileManager.ENCODING);
   }
 
-  public static read(path: string): string {
-    return fs.readFileSync(path).toString();
+  public static readLines(path: string): string[] {
+    if (!FileManager.fileExists(path))
+      return [];
+
+    const fileData = FileManager.read(path);
+    return fileData.split(/\r?\n/);
   }
 
   public static createDirectory(directoryPath: string): void {
@@ -38,16 +38,21 @@ class FileManager {
   }
 
   public static createFile(path: string, data: string): void {
-    fs.writeFileSync(path, data, FileManager.encoding);
+    fs.writeFileSync(path, data, FileManager.ENCODING);
   }
 
   public static isDirectory(path: string): boolean {
-    if (!fs.existsSync(path))
+    if (!FileManager.fileExists(path))
       return false;
 
     return fs.lstatSync(path).isDirectory();
   }
 
+  public static fileExists(path: string): boolean {
+    return fs.existsSync(path);
+  }
+
+  // Advanced
   public static getDirectoryFiles(directory: string, recursive: boolean = false): File[] {
     if (!fs.existsSync(directory))
       return [];
@@ -91,10 +96,6 @@ class FileManager {
     });
 
     return results;
-  }
-
-  public static fileExists(path: string): boolean {
-    return fs.existsSync(path);
   }
 
 }
