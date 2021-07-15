@@ -2,6 +2,10 @@
   "name": "@stadro/git-encrypt",
   "version": "0.0.1",
   "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "files": [
+    "./lib/**"
+  ],
   "bin": {
     "git-encrypt": "./lib/index.js"
   },
