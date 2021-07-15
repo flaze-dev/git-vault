@@ -1,6 +1,6 @@
 {
-  "name": "git-encrypt",
-  "version": "0.0.0",
+  "name": "@stadro/git-encrypt",
+  "version": "0.0.1",
   "main": "./lib/index.js",
   "bin": {
     "git-encrypt": "./lib/index.js"
@@ -13,7 +13,8 @@
     "build": "rm ./lib -rf && tsc -p . && copyfiles -u 1 './src/hooks/**' './lib/'",
     "fix-permissions": "sudo chmod +rx /usr/local/bin/git-encrypt",
     "i": "yarn build && npm i -g",
-    "u": "npm uninstall -g"
+    "u": "npm uninstall -g",
+    "npm:login": "npm login --scope=@stadro --registry=https://npm.pkg.github.com"
   },
   "devDependencies": {
     "@types/node": "^16.3.1",
