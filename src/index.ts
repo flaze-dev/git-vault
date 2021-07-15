@@ -9,7 +9,7 @@ import GitEncrypt from "./GitEncrypt";
 const program = GitEncrypt.program;
 
 program
-  .version("git-encrypt v0.0.0", "-v, --version", "output the current version number")
+  .version("git-encrypt v0.0.1", "-v, --version", "output the current version number")
   .description("A tool that allows you to encrypt git files.");
 
 program

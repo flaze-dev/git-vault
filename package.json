@@ -14,7 +14,8 @@
     "fix-permissions": "sudo chmod +rx /usr/local/bin/git-encrypt",
     "i": "yarn build && npm i -g",
     "u": "npm uninstall -g",
-    "npm:login": "npm login --scope=@stadro --registry=https://npm.pkg.github.com"
+    "npm:login": "npm login --scope=@stadro --registry=https://npm.pkg.github.com",
+    "prepublish": "yarn build"
   },
   "devDependencies": {
     "@types/node": "^16.3.1",
