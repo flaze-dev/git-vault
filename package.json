@@ -12,10 +12,8 @@
     "dev": "nodemon --watch './src/**/*.ts' --exec 'ts-node' ./src/index.ts",
     "build": "rm ./lib -rf && tsc -p . && copyfiles -u 1 './src/hooks/**' './lib/'",
     "fix-permissions": "sudo chmod +rx /usr/local/bin/git-encrypt",
-    "install": "yarn i",
-    "uninstall": "yarn u",
-    "i": "yarn build && sudo npm i -g",
-    "u": "sudo npm uninstall -g"
+    "i": "yarn build && npm i -g",
+    "u": "npm uninstall -g"
   },
   "devDependencies": {
     "@types/node": "^16.3.1",
