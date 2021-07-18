@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import GitEncrypt from "./core/GitEncrypt";
 import {config} from "./config/config";
+import GitEncrypt from "./core/GitEncrypt";
 import packageJson from "pjson";
 
 
@@ -8,42 +8,61 @@ import packageJson from "pjson";
  * git-encrypt cli
  * @author Ingo Andelhofs
  */
-const program = GitEncrypt.program;
-
-program
+GitEncrypt.program
   .version(`${config.bin} v${packageJson.version}`, "-v, --version", "output the current version number")
   .description("A tool that allows you to encrypt git files.");
 
-program
+GitEncrypt.program
   .command('init')
   .description('initialize git hooks, generate a key or pass a key, and store that key')
   .option("-k, --key <value>", 'pass a key to use in the current git repo')
-  .action(GitEncrypt.cmdInit);
+  .action(async (args: any) => {
+    const defaultArgs = {key: undefined};
+    await GitEncrypt.cmdInit(args ?? defaultArgs);
+  });
 
-program
+GitEncrypt.program
+  .command('add')
+  .description('add a file to encrypt')
+  .requiredOption("-f, --file <value>", 'the file to encrypt')
+  .action(async (args: any) => {
+    await GitEncrypt.cmdAdd(args);
+  });
+
+GitEncrypt.program
   .command('key')
   .description('get the stored key, set a key if a key is passed')
   .option("-k, --key <value>", 'the key you want to set for the project')
-  .action(GitEncrypt.cmdKey);
+  .action(async (args: any) => {
+    const defaultArgs = {key: undefined};
+    await GitEncrypt.cmdKey(args ?? defaultArgs);
+  });
 
-program
+GitEncrypt.program
   .command('generate')
-  .description('generate a new key, generate and store the new key if -s or --stored is passed')
-  .option("-s, --store", 'store the keys in the current project')
-  .action(async (args: any) => {await GitEncrypt.cmdGenerate(args)});
+  .description('generate a new key and store it')
+  .action(async () => {
+    await GitEncrypt.cmdGenerate();
+  });
 
-program
+GitEncrypt.program
   .command('encrypt')
   .description('encrypt all the files listed between .gitignore #start:encrypt and #end:encrypt')
   .option("-g, --git", 'adds all encrypted files to git before commit')
   .option("-k, --key <value>", 'the encryption key')
-  .action(GitEncrypt.cmdEncrypt);
+  .action(async (args: any) => {
+    const defaultArgs = {key: undefined, git: undefined};
+    await GitEncrypt.cmdEncrypt(args ?? defaultArgs);
+  });
 
-program
+GitEncrypt.program
   .command('decrypt')
   .description('decrypt all the files listed between .gitignore #start:encrypt and #end:encrypt')
   .option("-g, --git", 'decrypts all files and handles git events')
   .option("-k, --key <value>", 'the encryption key')
-  .action(GitEncrypt.cmdDecrypt);
+  .action(async (args: any) => {
+    const defaultArgs = {key: undefined, git: undefined};
+    await GitEncrypt.cmdDecrypt(args ?? defaultArgs);
+  });
 
-program.parse(GitEncrypt.args);
+GitEncrypt.start();

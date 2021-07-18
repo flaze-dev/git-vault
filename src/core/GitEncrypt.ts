@@ -1,8 +1,10 @@
 import FileManager, {File} from "./utils/FileManager";
+import CryptoManager from "./utils/CryptoManager";
 import {catchErrors} from "./utils/ErrorManager";
-import crypto, {KeyObject} from "crypto";
+import crypto from "crypto";
 import {config} from "../config/config";
 import {spawn} from "child_process";
+import Logger from "./utils/Logger";
 import {Command} from "commander";
 import process from "process";
 import {resolve} from "path";
@@ -10,10 +12,9 @@ import fs from "fs";
 
 
 type KeysArgs = { key?: string };
-type GenerateArgs = { store?: boolean };
+type AddArgs = { file: string };
 type InitArgs = { key?: string };
 type EncryptionArgs = { git?: boolean, key?: string };
-
 
 /**
  * GitEncrypt
@@ -21,26 +22,29 @@ type EncryptionArgs = { git?: boolean, key?: string };
  */
 class GitEncrypt {
   // Secret loader
-  public static getPathsToEncrypt(path: string = config.encryption.fileSecrets): string[] {
+  public static getPathsToEncrypt(): string[] {
+    const path = config.encryption.fileSecrets;
     const paths: string[] = [];
     let addPath = false;
 
     const lines = FileManager.readLines(path);
 
-    for (const line of lines) {
-      if (line.trim().startsWith("#end:enc") || line.trim().startsWith("#stop:enc")) {
+    for (const unTrimmedLine of lines) {
+      const line = unTrimmedLine.trim();
+
+      if (line.startsWith("#end:enc") || line.startsWith("#stop:enc")) {
         addPath = false;
       }
 
       if (addPath) {
         if (FileManager.isDirectory(line)) {
-          console.warn(`ignoring '${line}'... (directories are not supported yet)`);
+          Logger.warn(`Ignoring '${line}'... (directories are not supported yet)`);
         } else {
           paths.push(line);
         }
       }
 
-      if (line.trim().startsWith("#start:enc") || line.trim().startsWith("#begin:enc")) {
+      if (line.startsWith("#start:enc") || line.startsWith("#begin:enc")) {
         addPath = true;
       }
     }
@@ -48,55 +52,20 @@ class GitEncrypt {
     return paths;
   }
 
-  // Encryption
-  private static encrypt(data: string, password: string, iv: string): string {
-    const cipher = crypto.createCipheriv(
-      config.algo.aes,
-      Buffer.from(password, 'base64'),
-      Buffer.from(iv, 'base64'),
-    );
+  public static getExistingPathsToEncrypt(): string[] {
+    const paths = GitEncrypt.getPathsToEncrypt();
 
-    return Buffer.concat([
-      cipher.update(data),
-      cipher.final()
-    ]).toString('base64');
-  }
-
-  private static decrypt(encrypted: string, password: string, iv: string): string {
-    const cipher = crypto.createDecipheriv(
-      config.algo.aes,
-      Buffer.from(password, 'base64'),
-      Buffer.from(iv, 'base64'),
-    );
-
-    return Buffer.concat([
-      cipher.update(encrypted, 'base64'),
-      cipher.final()
-    ]).toString();
-  }
-
-  // Generators
-  private static async generateKey(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      crypto.generateKey('aes', {length: 256}, (err: Error | null, key: KeyObject) => {
-        if (err !== null) {
-          reject(err);
-        }
-
-        resolve(key.export().toString('base64'));
-      });
+    return paths.filter((path: string) => {
+      return FileManager.fileExists(path);
     });
   }
 
-  private static async generateIv(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      crypto.randomBytes(16, (err: Error | null, buf: Buffer) => {
-        if (err !== null) {
-          reject(err);
-        }
+  public static getExistingPathsToDecrypt(): string[] {
+    const paths = GitEncrypt.getPathsToEncrypt();
 
-        resolve(buf.toString('base64'));
-      });
+    return paths.filter((path: string) => {
+      const encryptedPath = GitEncrypt.getEncryptedPath(path);
+      return FileManager.fileExists(encryptedPath);
     });
   }
 
@@ -116,7 +85,7 @@ class GitEncrypt {
     return FileManager.read(keyPath);
   }
 
-  // Encrypted files
+  // Encryption helpers
   private static getEncryptedPath(path: string): string {
     const extension = config.encryption.fileExtension;
 
@@ -151,6 +120,10 @@ class GitEncrypt {
   // Program
   private static _program?: Command;
 
+  private static get args(): string[] {
+    return process.argv;
+  }
+
   public static get program(): Command {
     if (!GitEncrypt._program) {
       GitEncrypt._program = new Command();
@@ -159,94 +132,158 @@ class GitEncrypt {
     return GitEncrypt._program;
   }
 
-  public static get args(): string[] {
-    return process.argv;
+  public static start(): void {
+    GitEncrypt
+      .program
+      .parse(GitEncrypt.args);
   }
 
-  // Logger
-  private static logKey(key: string): void {
-    const str = `Key: '${key}'`;
-    console.log(str);
-  }
 
-  // Git
-  public static setupGitHooks(): void {
-    const srcDirectory = resolve(`${__dirname}/hooks/`);
+  // Helpers: Git
+  public static setupGitHooks(): boolean {
+    if (!FileManager.fileExists('.git')) {
+      Logger.log("No .git folder found, please initialize git first");
+      return false;
+    }
+
+    Logger.log("Installing git hooks");
+
+    const srcDirectory = resolve(`${__dirname}/../hooks/`);
     const destDirectory = resolve(".git/hooks");
     const hooks = FileManager.getDirectoryFiles(srcDirectory);
 
     hooks.forEach(({path, filename}: File) => {
-      console.log(`Installing ${filename} hook...`);
+      Logger.log(`Installing ${filename} hook`, 2);
       fs.copyFileSync(path, `${destDirectory}/${filename}`);
     });
 
-    GitEncrypt.cmdDecrypt();
-
-    console.log("Installation successful!");
+    Logger.log("Installation successful");
+    return true;
   }
 
+  // Helpers
+  private static async safeStoreKey(key: string) {
+    if (GitEncrypt.isKeyStored()) {
+      const replace = await Logger.confirm({
+        message: "Found existing key, replace?"
+      });
 
+      const oldKey = GitEncrypt.getStoredKey();
+
+      if (!replace) {
+        Logger.log(`Existing key: '${oldKey}'.`);
+      }
+
+      if (replace) {
+        Logger.log(`Replacing '${oldKey}' with '${key}'.`);
+        GitEncrypt.storeKey(key);
+      }
+
+      return;
+    }
+
+    GitEncrypt.storeKey(key);
+  }
 
   // Commands
-  public static async cmdInit(args?: InitArgs): Promise<void> {
-    // @todo: Does .git exist or not
-    GitEncrypt.setupGitHooks();
+  public static async cmdInit({key}: InitArgs): Promise<void> {
+    // Install git hooks
+    const success = GitEncrypt.setupGitHooks();
+    if (!success) return;
 
-    const {key} = args || {key: undefined};
-    key ?
-      GitEncrypt.storeKey(key) :
-      await GitEncrypt.cmdGenerate({store: true});
+    // Store or Generate key
+    if (key) {
+      await GitEncrypt.safeStoreKey(key);
+    }
+    else {
+      await GitEncrypt.cmdGenerate();
+    }
+
+    // Decrypt files
+    await GitEncrypt.cmdDecrypt({});
   }
 
-  public static cmdKey(args?: KeysArgs): void {
-    const {key} = args || {key: undefined};
+  public static async cmdAdd({file}: AddArgs): Promise<void> {
+    const lines: string[] = FileManager.readLines(config.encryption.fileSecrets);
+    let start: boolean = false;
 
+    for (let i = 0; i < lines.length; i++) {
+      const rawLine = lines[i];
+      const line = rawLine.trim();
+
+      if (line.startsWith("#start:enc") || line.startsWith("#begin:enc")) {
+        start = true;
+      }
+
+      if (start && (line.startsWith("#stop:enc") || line.startsWith("#end:enc"))) {
+        const updatedLines = [...lines.slice(0, i), file, ...lines.slice(i)];
+        FileManager.writeLines(config.encryption.fileSecrets, updatedLines);
+        return;
+      }
+    }
+
+    const prependLines = ["#start:enc", file, "#end:enc", ""];
+    const updatedLines = [...prependLines, ...lines];
+    FileManager.writeLines(config.encryption.fileSecrets, updatedLines);
+  }
+
+  public static async cmdKey({key}: KeysArgs): Promise<void> {
     // Store keys
     if (key) {
-      // @todo: Overwrite old key or not
-      GitEncrypt.storeKey(key);
+      await GitEncrypt.safeStoreKey(key);
       return;
     }
 
     // Show stored keys
     if (GitEncrypt.isKeyStored()) {
       const storedKey = GitEncrypt.getStoredKey();
-      GitEncrypt.logKey(storedKey);
+      Logger.log(`Existing key: '${storedKey}'.`);
     }
     else {
-      GitEncrypt.logKey('not found');
+      Logger.log("No existing key found.")
     }
   }
 
-  public static async cmdGenerate(args?: GenerateArgs): Promise<string> {
-    const {store} = args || {store: undefined};
+  public static async cmdGenerate(): Promise<string> {
+    const key = await CryptoManager.generateKey();
+    Logger.log(`Generated key: '${key}'`);
 
-    const key = await GitEncrypt.generateKey();
-    GitEncrypt.logKey(key);
-
-    // @todo: Store automatically or not
-    // @todo: Overwrite or not
-
-    if (store) {
-      GitEncrypt.storeKey(key);
+    if (!FileManager.fileExists('.git')) {
+      Logger.log("No .git folder found, cannot store key");
+      return key;
     }
 
+    await GitEncrypt.safeStoreKey(key);
     return key;
   }
 
-  public static cmdEncrypt(args?: EncryptionArgs): void {
-    const {git: gitFlag, key: keyFlag} = args || {key: undefined, git: undefined};
+  public static async cmdEncrypt({git: gitFlag, key: keyFlag}: EncryptionArgs): Promise<void> {
     const keyStored = GitEncrypt.isKeyStored();
+    const noKey = !keyFlag && !keyStored;
 
-    if (!keyFlag && !keyStored) {
-      console.log(`Please generate a key or provide a key with -k or --key`);
+    // No keys found
+    if (noKey) {
+      const generateKey = await Logger.confirm({
+        message: "No existing key, want to generate one?",
+        initial: true,
+      });
+
+      if (!generateKey) {
+        return;
+      }
+
+      await GitEncrypt.cmdGenerate();
+    }
+
+    // No files to encrypt
+    const pathsToEncrypt = GitEncrypt.getExistingPathsToEncrypt();
+    if (pathsToEncrypt.length <= 0) {
+      Logger.log("No files to encrypt");
       return;
     }
 
-    const pathsToEncrypt = GitEncrypt.getPathsToEncrypt();
-
-    // @todo: No files to encrypt
-
+    // Encrypt files
+    Logger.log("Detected files to encrypt");
     pathsToEncrypt.forEach((path: string) => {
       catchErrors(async () => {
         const plainData = FileManager.read(path);
@@ -256,57 +293,64 @@ class GitEncrypt {
         const encryptedFileExists = FileManager.fileExists(encryptedPath);
         const genIv = encryptedFileExists ?
           GitEncrypt.getEncryptedFileIv(encryptedPath) :
-          await GitEncrypt.generateIv();
+          await CryptoManager.generateIv();
 
         // Setup encryption
         const key = keyFlag ? keyFlag : GitEncrypt.getStoredKey();
-        const encryptedData = GitEncrypt.encrypt(plainData, key, genIv);
+        const encryptedData = CryptoManager.encrypt(plainData, key, genIv);
 
         FileManager.createFile(encryptedPath, GitEncrypt.encCombine(encryptedData, genIv));
-        console.log(`encrypting '${path}' to '${encryptedPath}'...`);
-      });
+        Logger.log(`Encrypting '${path}' to '${encryptedPath}'...`, 2);
+      }, `Failed to encrypt '${path}'`);
     });
 
+    // Add all files to git if --git
     if (gitFlag) {
       spawn('git', ['add', '.']);
     }
   }
 
-  public static cmdDecrypt(args?: EncryptionArgs): void {
-    const {key: keyFlag} = args || {key: undefined, git: undefined};
+  public static async cmdDecrypt({key: keyFlag}: EncryptionArgs): Promise<void> {
     const keyStored = GitEncrypt.isKeyStored();
+    const noKey = !keyFlag && !keyStored;
 
-    if (!keyFlag && !keyStored) {
-      console.log(`Please generate a key or provide a key with -k or --key`);
+    // No existing key found
+    if (noKey) {
+      Logger.log(`No existing key found, please provide a key with --key`);
       return;
     }
 
-    const pathsToEncrypt = GitEncrypt.getPathsToEncrypt();
+    // No files to decrypt
+    const pathsToDecrypt = GitEncrypt.getExistingPathsToDecrypt();
+    if (pathsToDecrypt.length <= 0) {
+      Logger.log("No files to decrypt");
+      return;
+    }
 
-    // @todo: No files to decrypt
+    // Decrypting files
+    Logger.log("Detected files to decrypt");
+    pathsToDecrypt.forEach((path: string) => {
+      const encryptedPath = GitEncrypt.getEncryptedPath(path);
 
-    pathsToEncrypt.forEach((path: string) => {
       catchErrors(() => {
-        const encryptedPath = GitEncrypt.getEncryptedPath(path);
         const encryptedData = FileManager.read(encryptedPath);
 
         // @todo Handle parse errors
         const {enc, iv, valid} = GitEncrypt.encParse(encryptedData);
 
         if (!valid) {
-          console.log(`WARNING: '${encryptedPath}' has been tempered with`);
+          Logger.log(`WARNING: '${encryptedPath}' has been tempered with`);
           return;
         }
 
         const key = keyFlag ? keyFlag : GitEncrypt.getStoredKey();
-        const decrypted = GitEncrypt.decrypt(enc, key, iv);
+        const decrypted = CryptoManager.decrypt(enc, key, iv);
 
         FileManager.createFile(path, decrypted);
-        console.log(`decrypting '${encryptedPath}' to '${path}'...`);
-      });
+        Logger.log(`Decrypting '${encryptedPath}' to '${path}'...`);
+      }, `Failed to decrypt '${encryptedPath}'`);
     });
   }
-
 }
 
 export default GitEncrypt;

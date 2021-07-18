@@ -30,6 +30,10 @@ class FileManager {
     return fileData.split(/\r?\n/);
   }
 
+  public static writeLines(path: string, lines: string[]): void {
+    fs.writeFileSync(path, lines.join("\n"), FileManager.ENCODING);
+  }
+
   public static createDirectory(directoryPath: string): void {
     if (FileManager.fileExists(directoryPath))
       return;
