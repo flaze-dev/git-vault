@@ -15,20 +15,14 @@ program
   .description("A tool that allows you to encrypt git files.");
 
 program
-  .command('install')
-  .description('install git hooks')
-  .action(GitEncrypt.cmdInstall);
-
-program
   .command('init')
-  .description('initialize a project by generating a key (default) or passing a generated key')
-  .option("-g, --generate", 'generate a key to store for the current git repo')
+  .description('initialize git hooks, generate a key or pass a key, and store that key')
   .option("-k, --key <value>", 'pass a key to use in the current git repo')
   .action(GitEncrypt.cmdInit);
 
 program
   .command('key')
-  .description('get the key if it is generated and stored locally, set a key if -k or --key is passed')
+  .description('get the stored key, set a key if a key is passed')
   .option("-k, --key <value>", 'the key you want to set for the project')
   .action(GitEncrypt.cmdKey);
 

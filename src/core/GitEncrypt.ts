@@ -9,10 +9,9 @@ import {resolve} from "path";
 import fs from "fs";
 
 
-type InstallArgs = {};
 type KeysArgs = { key?: string };
 type GenerateArgs = { store?: boolean };
-type InitArgs = { generate?: boolean, key?: string };
+type InitArgs = { key?: string };
 type EncryptionArgs = { git?: boolean, key?: string };
 
 
@@ -170,51 +169,8 @@ class GitEncrypt {
     console.log(str);
   }
 
-  // Commands
-  public static cmdKey(args?: KeysArgs): void {
-    const {key: keyFlag} = args || {key: undefined};
-
-    // Store keys
-    if (keyFlag) {
-      GitEncrypt.storeKey(keyFlag);
-      return;
-    }
-
-    // Show stored keys
-    if (GitEncrypt.isKeyStored()) {
-      const key = GitEncrypt.getStoredKey();
-      GitEncrypt.logKey(key);
-    } else {
-      GitEncrypt.logKey('not found');
-    }
-  }
-
-  public static async cmdGenerate(args?: GenerateArgs): Promise<string> {
-    const {store} = args || {store: undefined};
-
-    const key = await GitEncrypt.generateKey();
-    GitEncrypt.logKey(key);
-
-    if (store) {
-      GitEncrypt.storeKey(key);
-    }
-
-    return key;
-  }
-
-  public static async cmdInit(args?: InitArgs): Promise<void> {
-    const {generate, key} = args || {key: undefined, generate: undefined};
-
-    if (key && !generate) {
-      GitEncrypt.storeKey(key);
-    }
-
-    if ((generate || true) && !key) {
-      await GitEncrypt.cmdGenerate({store: true});
-    }
-  }
-
-  public static cmdInstall(args?: InstallArgs): void {
+  // Git
+  public static setupGitHooks(): void {
     const srcDirectory = resolve(`${__dirname}/hooks/`);
     const destDirectory = resolve(".git/hooks");
     const hooks = FileManager.getDirectoryFiles(srcDirectory);
@@ -229,6 +185,55 @@ class GitEncrypt {
     console.log("Installation successful!");
   }
 
+
+
+  // Commands
+  public static async cmdInit(args?: InitArgs): Promise<void> {
+    // @todo: Does .git exist or not
+    GitEncrypt.setupGitHooks();
+
+    const {key} = args || {key: undefined};
+    key ?
+      GitEncrypt.storeKey(key) :
+      await GitEncrypt.cmdGenerate({store: true});
+  }
+
+  public static cmdKey(args?: KeysArgs): void {
+    const {key} = args || {key: undefined};
+
+    // Store keys
+    if (key) {
+      // @todo: Overwrite old key or not
+      GitEncrypt.storeKey(key);
+      return;
+    }
+
+    // Show stored keys
+    if (GitEncrypt.isKeyStored()) {
+      const storedKey = GitEncrypt.getStoredKey();
+      GitEncrypt.logKey(storedKey);
+    }
+    else {
+      GitEncrypt.logKey('not found');
+    }
+  }
+
+  public static async cmdGenerate(args?: GenerateArgs): Promise<string> {
+    const {store} = args || {store: undefined};
+
+    const key = await GitEncrypt.generateKey();
+    GitEncrypt.logKey(key);
+
+    // @todo: Store automatically or not
+    // @todo: Overwrite or not
+
+    if (store) {
+      GitEncrypt.storeKey(key);
+    }
+
+    return key;
+  }
+
   public static cmdEncrypt(args?: EncryptionArgs): void {
     const {git: gitFlag, key: keyFlag} = args || {key: undefined, git: undefined};
     const keyStored = GitEncrypt.isKeyStored();
@@ -239,6 +244,8 @@ class GitEncrypt {
     }
 
     const pathsToEncrypt = GitEncrypt.getPathsToEncrypt();
+
+    // @todo: No files to encrypt
 
     pathsToEncrypt.forEach((path: string) => {
       catchErrors(async () => {
@@ -275,6 +282,8 @@ class GitEncrypt {
     }
 
     const pathsToEncrypt = GitEncrypt.getPathsToEncrypt();
+
+    // @todo: No files to decrypt
 
     pathsToEncrypt.forEach((path: string) => {
       catchErrors(() => {
