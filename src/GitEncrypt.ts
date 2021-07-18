@@ -35,7 +35,7 @@ class GitEncrypt {
     const lines = FileManager.readLines(path);
 
     for (const line of lines) {
-      if (line.trim().startsWith("#end:encrypt")) {
+      if (line.trim().startsWith("#end:enc") || line.trim().startsWith("#stop:enc")) {
         addPath = false;
       }
 
@@ -47,7 +47,7 @@ class GitEncrypt {
         }
       }
 
-      if (line.trim().startsWith("#start:encrypt")) {
+      if (line.trim().startsWith("#start:enc") || line.trim().startsWith("#begin:enc")) {
         addPath = true;
       }
     }
