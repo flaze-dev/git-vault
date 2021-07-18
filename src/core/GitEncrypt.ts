@@ -1,6 +1,7 @@
-import FileManager, {File} from "./core/utils/FileManager";
-import {catchErrors} from "./core/utils/ErrorManager";
+import FileManager, {File} from "./utils/FileManager";
+import {catchErrors} from "./utils/ErrorManager";
 import crypto, {KeyObject} from "crypto";
+import {config} from "../config/config";
 import {spawn} from "child_process";
 import {Command} from "commander";
 import process from "process";
@@ -20,15 +21,8 @@ type EncryptionArgs = { git?: boolean, key?: string };
  * @author Ingo Andelhofs
  */
 class GitEncrypt {
-  public static readonly ENCRYPTED_FILE_EXTENSION = ".enc";
-  public static readonly SECRET_FILE = '.gitignore';
-  public static readonly BIN = "git-encrypt";
-
-  private static readonly ALGO = 'aes-256-cbc';
-
-
   // Secret loader
-  public static getPathsToEncrypt(path: string = this.SECRET_FILE): string[] {
+  public static getPathsToEncrypt(path: string = config.encryption.fileSecrets): string[] {
     const paths: string[] = [];
     let addPath = false;
 
@@ -58,7 +52,7 @@ class GitEncrypt {
   // Encryption
   private static encrypt(data: string, password: string, iv: string): string {
     const cipher = crypto.createCipheriv(
-      GitEncrypt.ALGO,
+      config.algo.aes,
       Buffer.from(password, 'base64'),
       Buffer.from(iv, 'base64'),
     );
@@ -71,7 +65,7 @@ class GitEncrypt {
 
   private static decrypt(encrypted: string, password: string, iv: string): string {
     const cipher = crypto.createDecipheriv(
-      GitEncrypt.ALGO,
+      config.algo.aes,
       Buffer.from(password, 'base64'),
       Buffer.from(iv, 'base64'),
     );
@@ -125,7 +119,7 @@ class GitEncrypt {
 
   // Encrypted files
   private static getEncryptedPath(path: string): string {
-    const extension = GitEncrypt.ENCRYPTED_FILE_EXTENSION;
+    const extension = config.encryption.fileExtension;
 
     if (extension.startsWith('.')) {
       return `${path}${extension}`;
