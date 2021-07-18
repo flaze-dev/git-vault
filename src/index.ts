@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import GitEncrypt from "./GitEncrypt";
+import packageJson from "pjson";
 
 
 /**
@@ -9,7 +10,7 @@ import GitEncrypt from "./GitEncrypt";
 const program = GitEncrypt.program;
 
 program
-  .version("git-encrypt v0.0.2", "-v, --version", "output the current version number")
+  .version(`git-encrypt v${packageJson.version}`, "-v, --version", "output the current version number")
   .description("A tool that allows you to encrypt git files.");
 
 program

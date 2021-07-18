@@ -29,6 +29,7 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "commander": "^8.0.0"
+    "commander": "^8.0.0",
+    "pjson": "^1.0.9"
   }
 }
