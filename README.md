@@ -71,8 +71,7 @@ $ git-encrypt decrypt --key <key>
 
 To `generate` a key manually, you can run:
 ```bash
-# The --store flag makes sure the generated key is stored so you don't have to provide a key to encrypt or decrypt files.
-$ git-encrypt generate --store
+$ git-encrypt generate
 ```
 
 To view or set the current `key`, you can run:
