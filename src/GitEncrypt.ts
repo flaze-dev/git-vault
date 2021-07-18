@@ -148,6 +148,12 @@ class GitEncrypt {
     return {enc, iv, valid: hash === genHash};
   }
 
+  private static getEncryptedFileIv(path: string): string {
+    const encryptedData = FileManager.read(path);
+    const {iv} = GitEncrypt.encParse(encryptedData);
+    return iv;
+  }
+
 
   // Program
   private static _program?: Command;
@@ -245,9 +251,14 @@ class GitEncrypt {
         const plainData = FileManager.read(path);
         const encryptedPath = GitEncrypt.getEncryptedPath(path);
 
+        // Should generate new iv
+        const encryptedFileExists = FileManager.fileExists(encryptedPath);
+        const genIv = encryptedFileExists ?
+          GitEncrypt.getEncryptedFileIv(encryptedPath) :
+          await GitEncrypt.generateIv();
+
         // Setup encryption
         const key = keyFlag ? keyFlag : GitEncrypt.getStoredKey();
-        const genIv = await GitEncrypt.generateIv();
         const encryptedData = GitEncrypt.encrypt(plainData, key, genIv);
 
         FileManager.createFile(encryptedPath, GitEncrypt.encCombine(encryptedData, genIv));

@@ -12,12 +12,13 @@
   "repository": "https://github.com/stadro/git-encrypt.git",
   "author": "ingoandelhofs <ingoandelhofs@gmail.com>",
   "scripts": {
-    "start": "ts-node ./src/index.ts",
-    "dev": "nodemon --watch './src/**/*.ts' --exec 'ts-node' ./src/index.ts",
+    "dev": "ts-node ./src/index.ts",
     "build": "rm ./lib -rf && tsc -p . && copyfiles -u 1 './src/hooks/**' './lib/'",
     "fix-permissions": "sudo chmod +rx /usr/local/bin/git-encrypt",
-    "i": "yarn build && npm i -g",
+    "i": "sudo yarn build && npm i -g && yarn fix-permissions",
+    "i:win": "yarn build && npm i -g",
     "u": "npm uninstall -g",
+    "u:win": "yarn u",
     "npm:login": "npm login --scope=@stadro --registry=https://npm.pkg.github.com",
     "prepublish": "yarn build"
   },
