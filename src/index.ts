@@ -48,7 +48,6 @@ GitEncrypt.program
 GitEncrypt.program
   .command('encrypt')
   .description('encrypt all the files listed between .gitignore #start:encrypt and #end:encrypt')
-  .option("-g, --git", 'adds all encrypted files to git before commit')
   .option("-k, --key <value>", 'the encryption key')
   .action(async (args: any) => {
     const defaultArgs = {key: undefined, git: undefined};
@@ -58,7 +57,6 @@ GitEncrypt.program
 GitEncrypt.program
   .command('decrypt')
   .description('decrypt all the files listed between .gitignore #start:encrypt and #end:encrypt')
-  .option("-g, --git", 'decrypts all files and handles git events')
   .option("-k, --key <value>", 'the encryption key')
   .action(async (args: any) => {
     const defaultArgs = {key: undefined, git: undefined};

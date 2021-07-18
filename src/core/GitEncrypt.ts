@@ -1,20 +1,20 @@
 import FileManager, {File} from "./utils/FileManager";
 import CryptoManager from "./utils/CryptoManager";
-import {catchErrors} from "./utils/ErrorManager";
-import crypto from "crypto";
-import {config} from "../config/config";
-import {spawn} from "child_process";
 import Logger from "./utils/Logger";
+import {catchErrors} from "./utils/ErrorManager";
+import {config} from "../config/config";
 import {Command} from "commander";
 import process from "process";
 import {resolve} from "path";
+import crypto from "crypto";
 import fs from "fs";
 
 
 type KeysArgs = { key?: string };
 type AddArgs = { file: string };
 type InitArgs = { key?: string };
-type EncryptionArgs = { git?: boolean, key?: string };
+type EncryptionArgs = { key?: string };
+
 
 /**
  * GitEncrypt
@@ -134,8 +134,8 @@ class GitEncrypt {
 
   public static start(): void {
     GitEncrypt
-      .program
-      .parse(GitEncrypt.args);
+    .program
+    .parse(GitEncrypt.args);
   }
 
 
@@ -194,8 +194,7 @@ class GitEncrypt {
     // Store or Generate key
     if (key) {
       await GitEncrypt.safeStoreKey(key);
-    }
-    else {
+    } else {
       await GitEncrypt.cmdGenerate();
     }
 
@@ -238,8 +237,7 @@ class GitEncrypt {
     if (GitEncrypt.isKeyStored()) {
       const storedKey = GitEncrypt.getStoredKey();
       Logger.log(`Existing key: '${storedKey}'.`);
-    }
-    else {
+    } else {
       Logger.log("No existing key found.")
     }
   }
@@ -257,7 +255,7 @@ class GitEncrypt {
     return key;
   }
 
-  public static async cmdEncrypt({git: gitFlag, key: keyFlag}: EncryptionArgs): Promise<void> {
+  public static async cmdEncrypt({key: keyFlag}: EncryptionArgs): Promise<void> {
     const keyStored = GitEncrypt.isKeyStored();
     const noKey = !keyFlag && !keyStored;
 
@@ -303,11 +301,6 @@ class GitEncrypt {
         Logger.log(`Encrypting '${path}' to '${encryptedPath}'...`, 2);
       }, `Failed to encrypt '${path}'`);
     });
-
-    // Add all files to git if --git
-    if (gitFlag) {
-      spawn('git', ['add', '.']);
-    }
   }
 
   public static async cmdDecrypt({key: keyFlag}: EncryptionArgs): Promise<void> {
