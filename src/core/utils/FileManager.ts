@@ -1,12 +1,24 @@
 import fs from "fs";
-import {basename} from "path";
+import {basename, dirname} from "path";
 
 
-export type File = {
+export type FileInfo = {
   path: string;
+  dir: string;
   filename: string;
   isDirectory: boolean;
 };
+
+export type GDFOptions = {
+  recursive: boolean;
+  ignore: string[];
+};
+
+export type GFONOptions = {
+  ignore: string[];
+};
+
+
 
 
 /**
@@ -57,26 +69,45 @@ class FileManager {
   }
 
   // Advanced
-  public static getDirectoryFiles(directory: string, recursive: boolean = false): File[] {
+  public static getDirectoryFiles(directory: string, options?: Partial<GDFOptions>): FileInfo[] {
+    // Default Options
+    const defaultOptions: GDFOptions = {
+      recursive: false,
+      ignore: [],
+    };
+
+    // Merge options
+    const foptions = <GDFOptions>{
+      ...defaultOptions,
+      ...options,
+    };
+
+
     if (!fs.existsSync(directory))
       return [];
 
     const files = fs.readdirSync(directory);
-    const results: File[] = [];
+    const results: FileInfo[] = [];
 
     files.forEach((filename: string) => {
-      const path = `${directory}/${filename}`
+      const path = `${directory}/${filename}`;
+      const baseFilename = basename(path);
       const isDirectory = FileManager.isDirectory(path);
 
-      if (isDirectory && recursive) {
-        const recursiveFiles = FileManager.getDirectoryFiles(path, recursive);
+      if (!foptions.ignore.includes(baseFilename) && isDirectory && foptions.recursive) {
+        const recursiveFiles = FileManager.getDirectoryFiles(path, {
+          recursive: foptions.recursive,
+          ignore: foptions.ignore,
+        });
+
         results.push(...recursiveFiles);
       }
       else {
         results.push({
           path: path,
-          filename: basename(path),
+          filename: baseFilename,
           isDirectory: isDirectory,
+          dir: dirname(path),
         });
       }
     });
@@ -84,8 +115,25 @@ class FileManager {
     return results;
   }
 
-  public static flattenFiles(paths: string[]): File[] {
-    const results: File[] = [];
+  public static getAllFilesOfName(dir: string, filename: string, options?: Partial<GFONOptions>): FileInfo[] {
+    const defaultOptions: GFONOptions = {
+      ignore: [],
+    };
+    
+    const foptions = {
+      ...defaultOptions,
+      ...options,
+    };
+
+    const dirsToIgnore = ["node_modules"];
+
+    const fileInfos = FileManager.getDirectoryFiles(dir, {recursive: true, ignore: dirsToIgnore});
+    const gitIgnoreFiles = fileInfos.filter((fileInfo: FileInfo) => fileInfo.filename === filename);
+    return gitIgnoreFiles;
+  }
+
+  public static flattenFiles(paths: string[]): FileInfo[] {
+    const results: FileInfo[] = [];
 
     paths.forEach((path: string) => {
       const isDirectory = FileManager.isDirectory(path);
@@ -96,6 +144,7 @@ class FileManager {
           path: path,
           filename: basename(path),
           isDirectory: isDirectory,
+          dir: dirname(path),
         })
     });
 
