@@ -1,5 +1,5 @@
 {
-  "name": "@stadro/git-encrypt",
+  "name": "@clipido/git-encrypt",
   "version": "0.0.2",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -9,7 +9,7 @@
   "bin": {
     "git-encrypt": "./lib/index.js"
   },
-  "repository": "https://github.com/stadro/git-encrypt.git",
+  "repository": "https://github.com/clipido/git-encrypt.git",
   "author": "ingoandelhofs <ingoandelhofs@gmail.com>",
   "scripts": {
     "dev": "ts-node ./src/index.ts",
@@ -19,7 +19,7 @@
     "i:win": "yarn build && npm i -g",
     "u": "npm uninstall -g",
     "u:win": "yarn u",
-    "npm:login": "npm login --scope=@stadro --registry=https://npm.pkg.github.com",
+    "npm:login": "npm login --scope=@clipido --registry=https://npm.pkg.github.com",
     "prepublish": "yarn build"
   },
   "devDependencies": {
