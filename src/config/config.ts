@@ -3,7 +3,7 @@
 export const config = {
   generateDynamicIvOncePerFile: true,
 
-  bin: "git-encrypt",
+  bin: "git-vault",
   encryption: {
     fileExtension: ".enc",
     fileSecrets: ".gitignore",

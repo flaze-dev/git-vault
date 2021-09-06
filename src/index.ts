@@ -7,7 +7,7 @@ import PathHelper from "./core/path";
 
 
 /**
- * git-encrypt cli
+ * git-vault cli
  * @author Ingo Andelhofs
  */
 Cli.program

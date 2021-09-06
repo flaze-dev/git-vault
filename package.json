@@ -1,25 +1,29 @@
 {
-  "name": "@clipido/git-encrypt",
-  "version": "0.0.2",
+  "name": "@flaze/git-vault",
+  "version": "0.0.3",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "files": [
     "./lib/**"
   ],
-  "bin": {
-    "git-encrypt": "./lib/index.js"
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
   },
-  "repository": "https://github.com/clipido/git-encrypt.git",
+  "bin": {
+    "git-vault": "./lib/index.js"
+  },
+  "repository": "https://github.com/flaze-web/git-vault.git",
   "author": "ingoandelhofs <ingoandelhofs@gmail.com>",
   "scripts": {
     "dev": "ts-node ./src/index.ts",
     "build": "rm ./lib -rf && tsc -p . && copyfiles -u 1 './src/hooks/**' './lib/'",
-    "fix-permissions": "sudo chmod +rx /usr/local/bin/git-encrypt",
+    "fix-permissions": "sudo chmod +rx /usr/local/bin/git-vault",
     "i": "sudo yarn build && npm i -g && yarn fix-permissions",
     "i:win": "yarn build && npm i -g",
     "u": "npm uninstall -g",
     "u:win": "yarn u",
-    "npm:login": "npm login --scope=@clipido --registry=https://npm.pkg.github.com",
+    "npm:login": "npm adduser",
+    "publish:lib": "yarn publish --access public",
     "prepublish": "yarn build"
   },
   "devDependencies": {

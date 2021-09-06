@@ -1,4 +1,4 @@
 #!/bin/bash
 
-git-encrypt encrypt
+git-vault encrypt
 git add .
