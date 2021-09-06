@@ -14,16 +14,16 @@ Cli.program
   .version(`${config.bin} v${packageJson.version}`, "-v, --version", "output the current version number")
   .description("A tool that allows you to encrypt git files.");
 
-Cli.program
-  .command('dev')
-  .description('dev command')
-  .action(async () => {
-    const paths2 = PathHelper.getPathsToDecrypt();
-    console.log(paths2);
+// Cli.program
+//   .command('dev')
+//   .description('dev command')
+//   .action(async () => {
+//     const paths2 = PathHelper.getPathsToDecrypt();
+//     console.log(paths2);
 
-    const paths = await PathHelper.getPathsToEncrypt();
-    console.log(paths);
-  });
+//     const paths = await PathHelper.getPathsToEncrypt();
+//     console.log(paths);
+//   });
 
 Cli.program
   .command('init')
