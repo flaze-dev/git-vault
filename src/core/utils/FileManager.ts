@@ -54,6 +54,12 @@ class FileManager {
   }
 
   public static createFile(path: string, data: string): void {
+    const dir = dirname(path);
+
+    if (!FileManager.fileExists(dir)) {
+      FileManager.createDirectory(dir);
+    }
+
     fs.writeFileSync(path, data, FileManager.ENCODING);
   }
 

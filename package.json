@@ -32,6 +32,7 @@
   "dependencies": {
     "@types/prompts": "^2.0.14",
     "commander": "^8.0.0",
+    "fast-glob": "^3.2.7",
     "pjson": "^1.0.9",
     "prompts": "^2.4.1"
   }

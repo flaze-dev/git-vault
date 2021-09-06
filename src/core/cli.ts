@@ -5,9 +5,10 @@ import {catchErrors} from "./utils/ErrorManager";
 import {config} from "../config/config";
 import {Command} from "commander";
 import process from "process";
-import {resolve} from "path";
+import {resolve, join} from "path";
 import crypto from "crypto";
 import fs from "fs";
+import PathHelper from "./path";
 
 
 type KeysArgs = { key?: string };
@@ -273,7 +274,7 @@ class Cli {
     }
 
     // No files to encrypt
-    const pathsToEncrypt = Cli.getExistingPathsToEncrypt();
+    const pathsToEncrypt = await PathHelper.getPathsToEncrypt();
     if (pathsToEncrypt.length <= 0) {
       Logger.log("No files to encrypt");
       return;
@@ -281,24 +282,30 @@ class Cli {
 
     // Encrypt files
     Logger.log("Detected files to encrypt");
-    pathsToEncrypt.forEach((path: string) => {
-      catchErrors(async () => {
-        const plainData = FileManager.read(path);
-        const encryptedPath = Cli.getEncryptedPath(path);
+    pathsToEncrypt.forEach(({paths, dir}: any) => {
+      paths.forEach((pathInDir: string) => {
 
-        // Should generate new iv
-        const encryptedFileExists = FileManager.fileExists(encryptedPath);
-        const genIv = encryptedFileExists ?
-          Cli.getEncryptedFileIv(encryptedPath) :
-          await CryptoManager.generateIv();
+        const path = join(dir, pathInDir);
 
-        // Setup encryption
-        const key = keyFlag ? keyFlag : Cli.getStoredKey();
-        const encryptedData = CryptoManager.encrypt(plainData, key, genIv);
+        catchErrors(async () => {
+          const plainData = FileManager.read(path);
+          const encryptedPath = Cli.getEncryptedPath(join(dir, ".encrypted/", pathInDir));
+  
+          // Should generate new iv
+          const encryptedFileExists = FileManager.fileExists(encryptedPath);
+          const genIv = encryptedFileExists ?
+            Cli.getEncryptedFileIv(encryptedPath) :
+            await CryptoManager.generateIv();
+  
+          // Setup encryption
+          const key = keyFlag ? keyFlag : Cli.getStoredKey();
+          const encryptedData = CryptoManager.encrypt(plainData, key, genIv);
+  
+          FileManager.createFile(encryptedPath, Cli.encCombine(encryptedData, genIv));
+          Logger.log(`Encrypting '${path}' to '${encryptedPath}'...`, 2);
+        }, `Failed to encrypt '${path}'`);
 
-        FileManager.createFile(encryptedPath, Cli.encCombine(encryptedData, genIv));
-        Logger.log(`Encrypting '${path}' to '${encryptedPath}'...`, 2);
-      }, `Failed to encrypt '${path}'`);
+      });
     });
   }
 
@@ -313,7 +320,7 @@ class Cli {
     }
 
     // No files to decrypt
-    const pathsToDecrypt = Cli.getExistingPathsToDecrypt();
+    const pathsToDecrypt = PathHelper.getPathsToDecrypt();
     if (pathsToDecrypt.length <= 0) {
       Logger.log("No files to decrypt");
       return;
@@ -322,25 +329,26 @@ class Cli {
     // Decrypting files
     Logger.log("Detected files to decrypt");
     pathsToDecrypt.forEach((path: string) => {
-      const encryptedPath = Cli.getEncryptedPath(path);
+      const withoutEnc = path.replace('.encrypted/', '');
+      const rawPath = withoutEnc.slice(0, - ".enc".length);
 
       catchErrors(() => {
-        const encryptedData = FileManager.read(encryptedPath);
+        const encryptedData = FileManager.read(path);
 
         // @todo Handle parse errors
         const {enc, iv, valid} = Cli.encParse(encryptedData);
 
         if (!valid) {
-          Logger.log(`WARNING: '${encryptedPath}' has been tempered with`);
+          Logger.log(`WARNING: '${path}' has been tempered with`);
           return;
         }
 
         const key = keyFlag ? keyFlag : Cli.getStoredKey();
         const decrypted = CryptoManager.decrypt(enc, key, iv);
 
-        FileManager.createFile(path, decrypted);
-        Logger.log(`Decrypting '${encryptedPath}' to '${path}'...`);
-      }, `Failed to decrypt '${encryptedPath}'`);
+        FileManager.createFile(rawPath, decrypted);
+        Logger.log(`Decrypting '${path}' to '${rawPath}'...`);
+      }, `Failed to decrypt '${path}'`);
     });
   }
 }

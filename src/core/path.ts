@@ -1,4 +1,4 @@
-import { join, basename, resolve, dirname } from "path";
+import fg from "fast-glob";
 import { config } from "../config/config";
 import FileManager, { FileInfo } from "./utils/FileManager";
 
@@ -34,21 +34,21 @@ class PathHelper {
 
   // Get Paths to Encrypt
   private static isEndComment(line: string): boolean {
-    return line.startsWith("#end:enc") || 
-           line.startsWith("#stop:enc");
+    return line.startsWith("#end:enc") ||
+      line.startsWith("#stop:enc");
   }
 
   private static isStartComment(line: string): boolean {
-    return line.startsWith("#start:enc") || 
-           line.startsWith("#begin:enc")
+    return line.startsWith("#start:enc") ||
+      line.startsWith("#begin:enc")
   }
 
   private static getIgnoreFiles(): FileInfo[] {
-    return FileManager.getAllFilesOfName(".", config.encryption.fileSecrets); 
+    return FileManager.getAllFilesOfName(".", config.encryption.fileSecrets);
   }
 
-  private static getPathsFromIgnoreFile(ignoreFile: FileInfo): string[] {
-    const {dir, path} = ignoreFile;
+  private static getPlainPathsFromIgnoreFile(ignoreFile: FileInfo): string[] {
+    const { path } = ignoreFile;
     const rPaths: string[] = [];
     const b = new Between();
 
@@ -60,73 +60,65 @@ class PathHelper {
       const isComment = line.startsWith("#");
       const isEnd = PathHelper.isEndComment(line);
       const isStart = PathHelper.isStartComment(line);
-      
+
       isEnd && b.end();
 
-      if (!isComment && b.isBetween() && line !== "") {       
-        const path = join(dir, line);
-       
-        // Directory
-        if (FileManager.isDirectory(path)) {
-          const fileInfos = FileManager.getDirectoryFiles(path, {recursive: true});
-          const filePaths = fileInfos.filter((fileInfo: FileInfo) => {
-            return fileInfo.isDirectory === false;
-          });
-
-          const paths = filePaths.map((fileInfo: FileInfo) => {
-            return fileInfo.path;
-          });
-
-          rPaths.push(...paths);
-          return;
-        }
-
-        // File
-        if (FileManager.fileExists(path)) {
-          rPaths.push(path);
-          return;
-        }
-
-        // Star
-        if (path.endsWith("*")) {         
-          const fileInfos = FileManager.getDirectoryFiles(join(dir, dirname(path)), {recursive: false});
-          const filePaths = fileInfos.filter((fileInfo: FileInfo) => {
-            return fileInfo.isDirectory === false;
-          });
-
-          const resolvedPaths = filePaths.filter((fileInfo: FileInfo) => {
-            const base = basename(path).slice(0, -1);           
-            return fileInfo.filename.startsWith(base);
-          });
-
-          const paths = resolvedPaths.map((fileInfo: FileInfo) => {
-            return fileInfo.path;
-          });
-
-          rPaths.push(...paths);
-          return;
-        }
+      if (!isComment && b.isBetween() && line !== "") {
+        rPaths.push(line);
       }
-      
+
       isStart && b.start();
     });
 
     return rPaths;
   }
 
-  public static getPathsToEncrypt(): string[] {
+  private static async getPathsFromIgnoreFile(ignoreFile: FileInfo): Promise<{ dir: string, paths: string[] }> {
+    const { dir } = ignoreFile;
+    const plainPaths: string[] = this.getPlainPathsFromIgnoreFile(ignoreFile);
+    const paths = await fg(plainPaths, {dot: true, cwd: dir});
+
+    return {
+      dir: dir,
+      paths: paths,
+    };
+  }
+
+  public static async getPathsToEncrypt(): Promise<{ dir: string, paths: string[] }[]> {
     const ignoredFiles = PathHelper.getIgnoreFiles();
-    const pathsToEncrypt = ignoredFiles.flatMap((ignoreFile: FileInfo) => {
-      return PathHelper.getPathsFromIgnoreFile(ignoreFile);
-    });
+
+    const pathsToEncrypt: { dir: string, paths: string[] }[] = [];
+
+    for (const ignoredFile of ignoredFiles) {
+      const data = await PathHelper.getPathsFromIgnoreFile(ignoredFile);
+      pathsToEncrypt.push(data);
+    }
 
     return pathsToEncrypt;
   }
 
 
   // Get Paths to Decrypt
+  // @todo: Find .encrypted folders at any level 
   public static getPathsToDecrypt(): string[] {
-    return [];
+    // const res = FileManager.getAllFilesOfName(".", ".encrypted");
+    const fileInfos = FileManager.getDirectoryFiles(".", {recursive: true, ignore: [".git", ".encrypted"]});
+
+    const filtered = fileInfos.filter((fileInfo: FileInfo) => {
+      return fileInfo.isDirectory && fileInfo.filename === '.encrypted';
+    });
+
+    const paths2: any = [];
+
+    for (const filter of filtered) {
+      
+      
+      const fileInfos2 = FileManager.getDirectoryFiles(filter.path, { recursive: true });
+      const paths = fileInfos2.map((fileInfo: FileInfo) => fileInfo.path);
+      paths2.push(...paths);
+    }
+
+    return paths2;
   }
 
 }
