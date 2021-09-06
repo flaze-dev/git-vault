@@ -96,23 +96,29 @@ class Cli {
     return `${path}.${extension}`;
   }
 
-  private static encCombine(enc: string, iv: string): string {
+  private static encCombine(enc: string, iv: string, key: string): string {
     const encAndIv = enc + "#" + iv;
-    const hash = crypto.createHmac('sha256', encAndIv).digest('base64');
+    const hash = crypto
+      .createHmac('sha256', encAndIv)
+      .update(key ?? "")
+      .digest('base64');
 
     return encAndIv + "#" + hash;
   }
 
-  private static encParse(data: string): { enc: string, iv: string, valid: boolean } {
+  private static encParse(data: string, key: string): { enc: string, iv: string, valid: boolean } {
     const [enc, iv, hash] = data.split('#');
-    const genHash = crypto.createHmac('sha256', `${enc}#${iv}`).digest('base64');
+    const genHash = crypto
+      .createHmac('sha256', `${enc}#${iv}`)
+      .update(key ?? "")
+      .digest('base64');
 
     return {enc, iv, valid: hash === genHash};
   }
 
-  private static getEncryptedFileIv(path: string): string {
+  private static getEncryptedFileIv(path: string, key: string): string {
     const encryptedData = FileManager.read(path);
-    const {iv} = Cli.encParse(encryptedData);
+    const {iv} = Cli.encParse(encryptedData, key);
     return iv;
   }
 
@@ -293,15 +299,17 @@ class Cli {
   
           // Should generate new iv
           const encryptedFileExists = FileManager.fileExists(encryptedPath);
+
+          const key = keyFlag ? keyFlag : Cli.getStoredKey();
+
           const genIv = encryptedFileExists ?
-            Cli.getEncryptedFileIv(encryptedPath) :
+            Cli.getEncryptedFileIv(encryptedPath, key) :
             await CryptoManager.generateIv();
   
           // Setup encryption
-          const key = keyFlag ? keyFlag : Cli.getStoredKey();
           const encryptedData = CryptoManager.encrypt(plainData, key, genIv);
   
-          FileManager.createFile(encryptedPath, Cli.encCombine(encryptedData, genIv));
+          FileManager.createFile(encryptedPath, Cli.encCombine(encryptedData, genIv, key));
           Logger.log(`Encrypting '${path}' to '${encryptedPath}'...`, 2);
         }, `Failed to encrypt '${path}'`);
 
@@ -336,14 +344,14 @@ class Cli {
         const encryptedData = FileManager.read(path);
 
         // @todo Handle parse errors
-        const {enc, iv, valid} = Cli.encParse(encryptedData);
+        const key = keyFlag ? keyFlag : Cli.getStoredKey();
+        const {enc, iv, valid} = Cli.encParse(encryptedData, key);
 
         if (!valid) {
           Logger.log(`WARNING: '${path}' has been tempered with`);
           return;
         }
 
-        const key = keyFlag ? keyFlag : Cli.getStoredKey();
         const decrypted = CryptoManager.decrypt(enc, key, iv);
 
         FileManager.createFile(rawPath, decrypted);
