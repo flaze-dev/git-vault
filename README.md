@@ -1,4 +1,4 @@
-# git-vault
+# git-vault (UNSTABLE - DEVELOPMENT)
 A tool that allows you to encrypt files in your git repository.
 
 ## Installation
