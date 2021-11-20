@@ -2,7 +2,6 @@
 import packageJson from "pjson";
 import { config } from "./config/config";
 import Cli from "./core/cli";
-import PathHelper from "./core/path";
 
 
 
